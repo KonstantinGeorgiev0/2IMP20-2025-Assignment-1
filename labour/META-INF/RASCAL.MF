@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Project-Name: labour
-Source-Roots: src
+Source: src
 Language: labour::Plugin
 Language-Name: BoulderingWall
 Language-Extensions: lbr
