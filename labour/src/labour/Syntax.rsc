@@ -1,5 +1,8 @@
 module labour::Syntax
 
+// define whitespace layout
+layout Whitespace = [\t\n\r ]*;
+
 /*
  * Define a concrete syntax for LaBouR. The language's specification is available in the PDF (Section 2)
  */
@@ -10,5 +13,86 @@ module labour::Syntax
  * plugin works accordingly.
  */
 start syntax BoulderingWall
- = // Add definition
+ = "bouldering_wall" Identifier "{" Volumes Routes"}" 
+ // identify wall with name; contains both Volumes and Routes and ensures both are present
  ;
+
+// define volumes section surrounded by square bracket and define one or more volumes allowed
+syntax Volumes = "volumes" "[" Volume+ "]";
+
+// define volume options
+syntax Volume = Circle | Rectangle | Polygon;
+
+// define circle volume
+syntax Circle = 
+    "circle" "{" Position "," Depth "," Radius "}";
+
+// define rectangle volume and add optional comma for holds
+syntax Rectangle = 
+    "rectangle" "{" Position "," Depth "," Width "," Height HoldsOpt? "}";
+
+// define polygon volume and add optional comma for holds 
+syntax Polygon = 
+    "polygon" "{" Position "," Faces "}";
+
+// define faces and vertices
+syntax Faces = 
+    "faces" "[" Face+ "]";
+// optional comma to start holds
+syntax Face = 
+    "face" "{" Vertices HoldsOpt? "}";
+// faces have exactly 3 vertices
+syntax Vertices = 
+    "vertices" "[" Vertex "," Vertex "," Vertex "]";
+// each vertex has x,y,z coordinates
+syntax Vertex =
+    "{" "x" ":" Integer "," "y" ":" Integer "," "z" ":" Integer "}";
+
+// define shared volume properties
+syntax Position = "pos" "{" "x" ":" Integer "," "y" ":" Integer "}";
+syntax Depth = "depth" ":" Integer;
+syntax Radius = "radius" ":" Integer;
+syntax Width = "width" ":" Integer;
+syntax Height = "height" ":" Integer;
+
+// holdsopt definition as possible to have either "," or "." 
+// -- assignment pdf has "." before holds for rectangle example -- 
+syntax HoldsOpt = ("," | ".") Holds;
+// holds contain one or more hold objects
+syntax Holds = "holds" "[" Hold+ "]";
+syntax Hold = 
+    "hold" HoldID "{" HoldProperties "}";
+
+// define hold properties 
+syntax HoldProperties = HoldProp ("," HoldProp)*;
+syntax HoldProp =
+      "pos" ":" Position2D
+    | "shape" ":" Shape
+    | "rotation" ":" Integer
+    | "colours" ":" "[" Colour ("," Colour)* "]"
+    | "start_hold" ":" Integer
+    | "end_hold";
+
+// define 2d pos
+syntax Position2D = "{" "x" ":" Integer "," "y" ":" Integer "}";
+
+// define Routes
+syntax Routes = "routes" "[" BoulderingRoute+ "]";
+
+// define route structure
+syntax BoulderingRoute =
+    "bouldering_route" Identifier "{" RouteProperties+ "}";
+
+// define route properties
+syntax RouteProperties =
+      "grade" ":" Grade
+    | "grid_base_point" ":" Position2D
+    | "holds" ":" "[" Identifier ("," Identifier)* "]";
+
+// define lexical rules
+lexical Integer = [0-9]+;
+lexical Identifier = "\"" ![\"]* "\"";
+lexical Shape = "\"" ![\"]* "\"";
+lexical Grade = "\"" ![\"]* "\"";
+lexical HoldID = "\"" [0-9][0-9][0-9][0-9] "\"";
+lexical Colour = "white" | "yellow" | "green" | "blue" | "red" | "purple" | "pink" | "black" | "orange";
