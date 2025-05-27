@@ -1,0 +1,68 @@
+bouldering_wall "My example wall" {
+  volumes [
+    polygon {
+      pos { x: 0, y: 0 },
+      faces [
+        face {
+          vertices [
+            { x: 0, y: 1, z: 0 },
+            { x: 2, y: 3, z: 10 },
+            { x: 0, y: 3, z: 0 }
+          ],
+          holds [
+            hold "0202" {
+              pos { x: 118, y: 168 },
+              shape: "52",
+              colours [ blue, white ],
+              start_hold: 2
+            },
+            hold "0203" {
+              pos { x: 118, y: 245 },
+              shape: "52",
+              colours [ blue, white ]
+            },
+            hold "0204" {
+              pos { x: 118, y: 350 },
+              shape: "52",
+              colours [ blue, white ]
+            }
+          ]
+        },
+        face {
+          vertices [
+            { x: 0, y: 1, z: 0 },
+            { x: 2, y: 3, z: 10 },
+            { x: 0, y: 3, z: 0 }
+          ]
+        }
+      ]
+    },
+    circle {
+      pos { x: 50, y: 200 },
+      depth: -10,
+      radius: 50
+    },
+    rectangle {
+      pos { x: 0, y: 0 },
+      depth: 40,
+      width: 50,
+      height: 20,
+      holds [
+        hold "0002" {
+          pos { x: 108, y: 50 },
+          shape: "5",
+          rotation: 98,
+          colours [ blue, white ],
+          end_hold
+        }
+      ]
+    }
+  ],
+  routes [
+    bouldering_route "Easy route" {
+      grade: "1A",
+      grid_base_point { x: 37, y: 13 },
+      holds ["0202", "0203", "0204", "0002"]
+    }
+  ]
+}
