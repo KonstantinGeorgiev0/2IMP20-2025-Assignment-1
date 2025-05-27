@@ -13,12 +13,12 @@ layout Whitespace = [\t\n\r ]*;
  * plugin works accordingly.
  */
 start syntax BoulderingWall
- = "bouldering_wall" Identifier "{" Volumes Routes"}" 
+ = "bouldering_wall" Identifier "{" Volumes "," Routes "}" 
  // identify wall with name; contains both Volumes and Routes and ensures both are present
  ;
 
-// define volumes section surrounded by square bracket and define one or more volumes allowed
-syntax Volumes = "volumes" "[" Volume+ "]";
+// define volumes section surrounded by square bracket and define one or more volumes allowed, separated by comma
+syntax Volumes = "volumes" "[" Volume ("," Volume)* "]";
 
 // define volume options
 syntax Volume = Circle | Rectangle | Polygon;
@@ -57,42 +57,52 @@ syntax Height = "height" ":" Integer;
 
 // holdsopt definition as possible to have either "," or "." 
 // -- assignment pdf has "." before holds for rectangle example -- 
-syntax HoldsOpt = ("," | ".") Holds;
-// holds contain one or more hold objects
-syntax Holds = "holds" "[" Hold+ "]";
+syntax HoldsOpt = "," Holds;
+// holds contain one or more hold objects separated by comma
+syntax Holds = "holds" "[" Hold ("," Hold)* "]";
 syntax Hold = 
     "hold" HoldID "{" HoldProperties "}";
 
 // define hold properties 
 syntax HoldProperties = HoldProp ("," HoldProp)*;
 syntax HoldProp =
-      "pos" ":" Position2D
+      "pos" Position2D
     | "shape" ":" Shape
     | "rotation" ":" Integer
-    | "colours" ":" "[" Colour ("," Colour)* "]"
+    | "colours" "[" Colour ("," Colour)* "]"
     | "start_hold" ":" Integer
     | "end_hold";
 
 // define 2d pos
 syntax Position2D = "{" "x" ":" Integer "," "y" ":" Integer "}";
 
-// define Routes
-syntax Routes = "routes" "[" BoulderingRoute+ "]";
+// define Routes with possible multiple routes separated by comma
+syntax Routes = "routes" "[" BoulderingRoute ("," BoulderingRoute)* "]";
 
 // define route structure
 syntax BoulderingRoute =
-    "bouldering_route" Identifier "{" RouteProperties+ "}";
+    "bouldering_route" Identifier "{" RouteProperties ("," RouteProperties)* "}";
 
 // define route properties
 syntax RouteProperties =
       "grade" ":" Grade
-    | "grid_base_point" ":" Position2D
-    | "holds" ":" "[" Identifier ("," Identifier)* "]";
+    | "grid_base_point" Position2D
+    | "holds" "[" Identifier ("," Identifier)* "]";
 
 // define lexical rules
-lexical Integer = [0-9]+;
-lexical Identifier = "\"" ![\"]* "\"";
-lexical Shape = "\"" ![\"]* "\"";
-lexical Grade = "\"" ![\"]* "\"";
+
+// Grade is a string
+// Identifier is a string
+// Shape is a string
+
+lexical Integer = integer : [0-9]+;
+// lexical Integer = [0-9]+;
+lexical Identifier = identifier: "\"" ![\"]* "\"";
+// lexical Identifier = "\"" ![\"]* "\"";
+lexical Shape = shape: "\"" ![\"]* "\"";
+// lexical Shape = "\"" ![\"]* "\"";
+lexical Grade = grade: "\"" ![\"]* "\"";
+// lexical Grade = "\"" ![\"]* "\"";
 lexical HoldID = "\"" [0-9][0-9][0-9][0-9] "\"";
-lexical Colour = "white" | "yellow" | "green" | "blue" | "red" | "purple" | "pink" | "black" | "orange";
+// lexical Colour = "white" | "yellow" | "green" | "blue" | "red" | "purple" | "pink" | "black" | "orange";
+lexical Colour = colour:  "white" | "yellow" | "green" | "blue" | "red" | "purple" | "pink" | "black" | "orange";
