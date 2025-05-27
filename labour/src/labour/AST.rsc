@@ -42,5 +42,3 @@ data BoulderingRoute(loc src=|unknown:///|) =
 data Colour =
     white() | yellow() | green() | blue() | red()
   | purple() | pink() | black() | orange();
-
-
