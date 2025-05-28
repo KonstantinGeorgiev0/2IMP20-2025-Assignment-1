@@ -1,7 +1,7 @@
 module labour::Syntax
 
 // define whitespace layout
-layout Whitespace = [\t\n\r ]*;
+layout Whitespace = [\t\n\r\ ]*;
 
 /*
  * Define a concrete syntax for LaBouR. The language's specification is available in the PDF (Section 2)
@@ -37,10 +37,13 @@ syntax Polygon =
 
 // define faces and vertices
 syntax Faces = 
-    "faces" "[" Face+ "]";
+    "faces" "[" Face ("," Face)* "]";
+    
 // optional comma to start holds
 syntax Face = 
-    "face" "{" Vertices HoldsOpt? "}";
+    "face" "{" Vertices "," Holds "}"
+    |   "face" "{" Vertices "}"
+    ;
 // faces have exactly 3 vertices
 syntax Vertices = 
     "vertices" "[" Vertex "," Vertex "," Vertex "]";
@@ -55,11 +58,13 @@ syntax Radius = "radius" ":" Integer;
 syntax Width = "width" ":" Integer;
 syntax Height = "height" ":" Integer;
 
-// holdsopt definition as possible to have either "," or "." 
-// -- assignment pdf has "." before holds for rectangle example -- 
+// holdsopt definition as possible to have ","
 syntax HoldsOpt = "," Holds;
 // holds contain one or more hold objects separated by comma
-syntax Holds = "holds" "[" Hold ("," Hold)* "]";
+syntax Holds = 
+    "holds" "[" Hold "]"
+    |   "holds" "[" Hold ("," Hold)+ "]"
+    ;
 syntax Hold = 
     "hold" HoldID "{" HoldProperties "}";
 
@@ -77,7 +82,10 @@ syntax HoldProp =
 syntax Position2D = "{" "x" ":" Integer "," "y" ":" Integer "}";
 
 // define Routes with possible multiple routes separated by comma
-syntax Routes = "routes" "[" BoulderingRoute ("," BoulderingRoute)* "]";
+syntax Routes =
+    "routes" "[" BoulderingRoute "]"
+    | "routes" "[" BoulderingRoute ("," BoulderingRoute)+ "]"
+    ;
 
 // define route structure
 syntax BoulderingRoute =
@@ -95,11 +103,11 @@ syntax RouteProperties =
 // Identifier is a string
 // Shape is a string
 
-lexical Integer = integer : [0-9]+;
+lexical Integer = integer : "-"?[0-9]+;
 // lexical Integer = [0-9]+;
 lexical Identifier = identifier: "\"" ![\"]* "\"";
 // lexical Identifier = "\"" ![\"]* "\"";
-lexical Shape = shape: "\"" ![\"]* "\"";
+lexical Shape = Shape: "\"" ![\"]* "\"";
 // lexical Shape = "\"" ![\"]* "\"";
 lexical Grade = grade: "\"" ![\"]* "\"";
 // lexical Grade = "\"" ![\"]* "\"";
