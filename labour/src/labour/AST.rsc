@@ -21,8 +21,10 @@ data Volume(loc src=|unknown:///|)
 
 // define additional types
 data Position = pos( int x, int y );
+
 // 3d point
 data Vertex = vertex( int x, int y, int z);
+
 // polygon face with vertices and holds
 data Face( loc src=|unknown:///| ) =
   face(list[Vertex] vertices, list[Hold] holds)
@@ -37,6 +39,7 @@ data Hold(loc src=|unknown:///|) =
 data BoulderingRoute(loc src=|unknown:///|) =
   route(str id, str grade, Position grid_base_point, list[str] holdIds )
   ;
+
 
 // colour
 data Colour =
