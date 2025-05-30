@@ -11,12 +11,22 @@ import Exception;
  * that represents the parsed program.
  */
 
-start[BoulderingWall] parseLaBouR(loc filePath) {
-    try {
-        return parse(#start[BoulderingWall], readFile(filePath));
-    }
-    catch ParseError(e): {
-        println("Syntax error while parsing <e>");
-        throw e;
-    }    
+// start[BoulderingWall] parseLaBouR(loc filePath) {
+//     try {
+//         return parse(#start[BoulderingWall], readFile(filePath));
+//     }
+//     catch ParseError(e): {
+//         println("Syntax error while parsing <e>");
+//         throw e;
+//     }    
+// }
+
+public BoulderingWall parseLaBouR(loc filePath) {
+   try {
+      BoulderingWall parsedRoute = parse(#BoulderingWall, readFile(filePath));
+      return parsedRoute;
+   } catch ParseError(e): {
+      println("Parsing error occurred: <e>");
+      throw e;
+   }
 }
