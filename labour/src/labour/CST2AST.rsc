@@ -27,7 +27,7 @@ public BoulderingWall cst2ast(Tree cst) {
     list[BoulderingRoute] routes = [];
 
     switch (cst) {
-        // Match the root BoulderingWall node (the concrete syntax, see Syntax.rsc)
+        // match root BoulderingWall node
         case appl(
             prod(sort("BoulderingWall"), _, _), 
             children
@@ -35,51 +35,38 @@ public BoulderingWall cst2ast(Tree cst) {
                 // Iterate over each direct child of the wall
                 for (Tree child <- children) {
                     switch (child) {
-                        // Identifier subtree carries the wall name
+                        // identifier subtree carries the wall name
                         case appl(
-                                prod(label("identifier", lex("Identifier")), _, _), _):
-                                {
-                                    name = getString(child);  
-                                    println("identifier success");   
-                                }
+                            prod(label("identifier", lex("Identifier")), _, _), _):
+                            {
+                                name = getString(child);  
+                                println("identifier success");   
+                            }
 
-                        // volumes subtree—collect all Volume nodes
                         case appl(
-                                // prod(sort("Volumes"), _, _), _):
-                                prod(sort("Volumes"), _, _), 
-                                [
-                                    appl(prod(lit("volumes"), _, _), _),
-                                    _ws1,
-                                    appl(prod(lit("["), _, _), _),
-                                    _ws2,
-                                    seqNode,
-                                    _ws3,
-                                    appl(prod(lit("]"), _, _), _)
-                                ]
-                                ):
-                                {
-                                    println("volummm");
-                                    // volumes = getVolumes(child);
-                                    volumes = [ getVolume(v) | v <- getListFromSeq(seqNode) ];
-                                    println("volumes success");
-                                }
-                        
+                            // volumes subtree where we collect all volume types
+                            prod(sort("Volumes"), _, _), volumeChildren):
+                            {
+                                println("volume in cst2ast reached.");
+                                volumes = getVolumes7(volumeChildren);
+                                println("success vovovovovo");
+                            }
+
                         // routes subtree—collect all BoulderingRoute nodes
                         case appl(
-                                prod(sort("Routes"), _, _), _):
+                                prod(sort("Routes"), _, _), routeChildren):
                                 {
-                                    routes = [ getRoute(r) 
-                                            | r <- getListFromSeq(child) 
-                                            ];
+                                    println("routesss");
+                                    routes = getRoutes(routeChildren);
                                     println("routes success");
                                 }
 
-                        // all else (whitespace, braces, commas) is ignored
+                        // all else is ignored
                         default: ;
                     }
                 }
 
-                // Build the AST node once we have name, volumes, and routes
+                // build AST node once we have name, volumes, and routes
                 return boulderingWall(name, volumes, routes);
             }
         default:
@@ -87,18 +74,23 @@ public BoulderingWall cst2ast(Tree cst) {
     }
 }
 
-private Tree stripLayout(Tree t) {
-  switch (t) {
-    // If this is the Rascal-wrapper around your start symbol,
-    case appl(prod(label("start", sort(_)), _, _), [ inner ]):
-      return stripLayout(inner);
-    // If this is a pure layout node (whitespace, comments, etc.),
-    case appl(prod(label("layouts", _), _, _), _):
-      throw "unreachable"; // or return something safe
-    default:
-      return t;
-  }
-}
+// note the lowercase constructor boulderingWall
+public bool hasVolumes(boulderingWall(_, vols, _)) = size(vols) > 0;
+
+public bool hasRoutes(boulderingWall(_, _, rts)) = size(rts) > 0;
+
+// private Tree stripLayout(Tree t) {
+//     switch (t) {
+//         // if Rascal-wrapper around start symbol,
+//         case appl(prod(label("start", sort(_)), _, _), [ inner ]):
+//             return stripLayout(inner);
+//         // if pure layout node
+//         case appl(prod(label("layouts", _), _, _), _):
+//             throw "unreachable";
+//         default:
+//             return t;
+//     }
+// }
 
 // strip the surrounding quotes helper function
 private str stripQuotes(str s) {
@@ -134,81 +126,344 @@ private bool isAppl(Tree t) {
     }
 }
 
+// public str getString(Tree t) {
+//     switch (t) {
+//         // Identifier is a lexical non terminal
+//         case appl(
+//             prod(label("identifier", lex("Identifier")), _, _), 
+//             [ _openQuote, content, _closeQuote ]
+//             ):
+//             return stripQuotes(toString(content));
+//         // fawback for any raw identifier
+//         case appl(prod(lex("Identifier"), _, _), [ child ]):
+//             return stripQuotes(toString(child));
+//         default:
+//             throw "Expected Identifier, got: " + toString(t);
+//     }
+// }
+
 public str getString(Tree t) {
-    switch (t) {
-        // Identifier is a lexical non terminal
-        case appl(
-            prod(label("identifier", lex("Identifier")), _, _), 
-            [ _openQuote, content, _closeQuote ]
-            ):
-            return stripQuotes(toString(content));
-        // fawback for any raw identifier
-        case appl(prod(lex("Identifier"), _, _), [ child ]):
-            return stripQuotes(toString(child));
-        default:
-            throw "Expected Identifier, got: " + toString(t);
-    }
+  // reconstruct the original concrete syntax (including quotes)
+  str text = unparse(t);
+  // strip leading/trailing quotes
+  return stripQuotes(text);
 }
 
+
+// private int getInt(Tree t) {
+//     switch (t) {
+//         // Integer is a lexical non terminal
+//         // case appl(prod(label("Integer", _), _, _), [ child ]):
+//         case appl(prod(lex("Integer"), _, _), [ child ]):
+//             return toInt(stripQuotes(toString(child)));
+//         default:
+//             throw "Expected Integer, got: " + toString(t);
+//     }
+// }
 private int getInt(Tree t) {
-    switch (t) {
-        // Integer is a lexical non terminal
-        // case appl(prod(label("Integer", _), _, _), [ child ]):
-        case appl(prod(lex("Integer"), _, _), [ child ]):
-            return toInt(stripQuotes(toString(child)));
-        default:
-            throw "Expected Integer, got: " + toString(t);
-    }
+    // unparse entire subtree
+    // strip quotes if any, and convert to int
+    str text = stripQuotes(unparse(t));
+    return toInt(text);
 }
 
-private list[Volume] getVolumes(Tree t) = 
-    [ getVolume(v)
-     | v <- getListFromSeq(t) 
-    ];
-    //  | seq <- getListFromSeq(t),
-    //     v <- getListFromSeq(seq) 
-    // ];
+private list[Volume] getVolumes7(list[Tree] children) {
+    list[Volume] result = [];
+    // get Volume wrapper, then for each inner Volume node call getVolume
+    for (appl(prod(sort("Volume"), _, _), inner) <- children) {
+        for (Tree v <- inner) {
+        //   println("extracting volume node: " + toString(v));
+        result += getVolume(v);
+        }
+    }
+    return result;
+}
+
+// private list[Volume] getVolumes6(list[Tree] children) {
+//     println("getVolumes function reached.");
+//     // println(children);
+//     // first volume is the single Volume node at index 4
+//     list[Volume] first  = [ getVolume(v) 
+//                             | v <- getListFromSeq(children[4]) ];
+
+//     // the remaining volumes sit under the iter-star-seps node at index 6
+//     list[Volume] rest   = [ getVolume(v) 
+//                             | v <- getListFromSeq(children[6]) ];
+//     return first + rest;
+// }
+
+// private list[Volume] getVolumes6(list[Tree] children) {
+//   println("=== getVolumes6 reached ===");
+//   list[Volume] result = [];
+
+//   for (Tree c <- children) {
+//     println("  child: " + toString(c));
+
+//     visit(c) {
+//         case v: appl(prod(label("circle", _), _, _), _) {
+//             println("    found circle: " + toString(v));
+//             result += getVolume(v);
+//         }
+//         // case a: appl(prod(label("rectangle", _), _, _), _) {
+//         //     println("    found rectangle: " + toString(v));
+//         //     result += getVolume(a);
+//         // }
+//         // case b: appl(prod(label("polygon",   _),_,_),_) {
+//         //     println("    found polygon: " + toString(v));
+//         //     result += getVolume(b);
+//         // }
+//         default: ;
+//     }
+//   }
+
+//   println("=== getVolumes6 result count = " + toString(size(result)) + " ===");
+//   return result;
+// }
+
+
+// // takes the list of direct children under the Volumes node
+// private list[Volume] getVolumes(list[Tree] children) {
+//     list[Volume] result = [];
+//     println("getVolumes function reached.");
+
+//     for (Tree child <- children) {
+//         visit(child) {
+//         // catch any polygon node anywhere under child
+//         case p: appl(prod(label("polygon", _), _, _), _):
+//             result += getVolume(p);
+
+//         // circle
+//         case c: appl(prod(label("circle", _), _, _), _):
+//             result += getVolume(c);
+        
+//         // rectangle
+//         case r: appl(prod(label("rectangle", _), _, _), _):
+//             result += getVolume(r);
+//         }
+//     }
+//     // println(result);
+//     return result;
+// }
 
 private Volume getVolume(Tree t) {
-    println("gugugu");
-    println(t);
+    // println("getVolume function reached for: " + toString(t));
+    println("getVolume function reached.");    
+    // println(t);
+
     switch (t) {
         case appl(prod(label("circle", _), _, _), [_, _, pos, _, depth, _, radius, _]):
-        return circle(getPosition(pos), getInt(depth), getInt(radius));
+        {
+            println("cicic");
+            return circle(getPosition(pos), getInt(depth), getInt(radius));
+        }
 
         case appl(prod(label("rectangle", _), _, _), [_, _, pos, _, depth, _, width, _, height, maybeHolds]):
-        return rectangle(getPosition(pos), getInt(depth), getInt(width), getInt(height), getHoldsOpt(maybeHolds));
+        {
+            println("recrtec");
+            return rectangle(getPosition(pos), getInt(depth), getInt(width), getInt(height), getHoldsOpt(maybeHolds));
+        }
 
-        case appl(prod(label("polygon", _), _, _), [_, _, pos, _, faceList, _]):
-        return polygon(getPosition(pos), getFaces(faceList));
+        case appl(
+            prod(sort("Polygon"), _, _),
+            [
+                _,       // 0: “polygon” literal
+                _,       // 1: layouts
+                _,       // 2: “{”
+                _,       // 3: layouts
+                posNode, // 4: Position subtree
+                _,       // 5: layouts
+                _,       // 6: “,”
+                _,       // 7: layouts
+                facesNode, // 8: Faces subtree
+                _,       // 9: layouts
+                _        // 10: “}”
+            ]
+            ):
+            {
+                println("polyyyyaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+                println(posNode);
+                println(facesNode);
+                return polygon(
+                    getPosition(posNode),
+                    getFaces(facesNode)
+                );
+            }
     }
     throw "Unknown volume type";
 }
 
 private Position getPosition(Tree t) {
-    switch (t) {
-        case appl(_, [_, _, x, _, _, _, y, _]):
-            return pos(getInt(x), getInt(y));
-        default: throw "Expected correct position.";
+    // println("getPosition reached with: " + toString(t));
+    list[Tree] children = getListFromSeq(t);
+    // println("CHILDREEEEEN: " + children);
+
+    // collect all integer children under this Position node
+    list[int] coords =
+        [ getInt(c)
+        | c : appl(prod(label("integer", _), _, _), _) <- children
+        ];
+    // println("COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + coords);
+    if (size(coords) == 2) {
+        return pos(coords[0], coords[1]);
+    }
+    else {
+        throw "Expected two integers in Position, got: " + toString(t);
     }
 }
 
-private list[Face] getFaces(Tree t) = 
-    [getFace(f) | f <- getListFromSeq(t)];
+// private list[Face] getFaces(Tree t) {
+//     println("getFaces reached with: " + toString(t));
+//     switch (t) {
+//         case appl(prod(sort("Faces"), _, _), children): {
+//             // the very first Face is at position 4
+//             Face first = getFace(children[4]);
 
-private Face getFace(Tree t) {
-    switch (t) {
-        case appl(prod(label("Face", _), _, _), [_, vertBlock, maybeHolds]):
-            return face(getVertices(vertBlock), getHoldsOpt(maybeHolds));
+//             // remaining Face nodes live under the iter-star-seps at position 6
+//             // list[Tree] reps  = getListFromSeq(children[6]);
+//             // list[Face] rest = [ getFace(f) | f <- reps ];
+//             list[Tree] more = getListFromSeq(children[6]);
+//             return [ first ] + [ getFace(f) | f <- more ];
+
+//             // return [ first ] + rest;
+//         }
+//         default:
+//         throw "Expected Faces node, got: " + toString(t);
+//     }
+// }
+
+private list[Face] getFaces(Tree t) {
+    // println("getFaces reached with: " + toString(t));
+    list[Face] faces = [];
+    visit(t) {
+        // whenever we hit a Face application, bind it to f and convert it
+        case f: appl(prod(sort("Face"), _, _), _) :
+            faces += getFace(f);
+        // default: 
+        //     throw "Expected Faces list, got: " + toString(t);
+    }
+    if (size(faces) > 0) {
+        println("getFaces result: " + toString(faces));
+        return faces;
+    }
+    else {
+        throw "Expected at least one Face, got: " + toString(t);
+    }
+    // return faces;
+}
+
+// private Face getFace(Tree t) {
+//     // println("getFace reached with: " + toString(t));
+
+//     switch (t) {
+//         case appl(prod(sort("Face"), _, _), children):
+//         {
+//             // pick out the Vertices and Holds subtrees
+//             list[Tree] verts = [ v | v : appl(prod(sort("Vertices"), _, _), _) <- children ];
+//             list[Tree] holds = [ h | h : appl(prod(sort("Holds"),    _, _), _) <- children ];
+
+//             return face(
+//                 getVertices(verts[0]),
+//                 size(holds) > 0 ? getHoldsOpt(holds[0]) : []
+//             );
+//         }
+//         default:
+//             throw "Expected Face, got: " + toString(t);
+//     }
+// }
+
+private Face getFace(Tree f) {
+    return face(
+        getVertices(f),   // grab all Vertex nodes under this face
+        getHolds(f)       // grab all Hold nodes under this face
+    );
+}
+
+private list[Vertex] getVertices(Tree t) {
+    println("getVertices reached with: " + toString(t));
+    list[Vertex] vs = [];
+    visit(t) {
+        // catch CST node for a vertex
+        // case appl(prod(sort("Vertex"), children, _)):
+        case appl(
+           prod(sort("Vertex"), _, _),   
+           subtrees
+        ):
+        {
+            println("found a Vertex node with children: " + toString(subtrees));
+
+            // extract all lex("Integer") leaves from those subtrees
+            list[int] coords = [
+                getInt(iLeaf)
+                | appl(prod(lex("Integer"), _, _), [ iLeaf ]) <- subtrees
+            ];
+            if (size(coords) == 3) {
+                vs += vertex(coords[0], coords[1], coords[2]);
+            }
+        }
         default:
-            throw "Expected Face, got: " + toString(t);
+            throw "Expected list of Vertices.";
     }
+    return vs;
 }
 
-private list[Vertex] getVertices(Tree t) =
-    [vertex(getInt(x), getInt(y), getInt(z)) 
-        | appl(_, [x, y, z]) <- getListFromSeq(t)
-    ];
+// private list[Vertex] getVertices(Tree t) {
+//     // t is the CST node for “Vertices [… ]”
+//     println("getVertices reached with: " + toString(t));
+//     list[Vertex] result = [];
+
+//     // get all the immediate appl-children under the Vertices node
+//     for (Tree v <- getListFromSeq(t)) {
+//         // collect exactly the three integer arguments inside v
+//         println("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv: " + toString(v));
+//         list[Tree] coords =
+//         [ nc
+//             | appl(prod(label("integer",lex("Integer")), _, _), [nc])  
+//             <- getListFromSeq(v)
+//         ];
+
+//         if (size(coords) != 3) {
+//         throw "Expected exactly three Integer children in Vertex, got: " 
+//                 + toString(v);
+//         }
+
+//         result += vertex(
+//         getInt(coords[0]),
+//         getInt(coords[1]),
+//         getInt(coords[2])
+//         );
+//         // // v should be an appl(prod(sort("Vertex"),_,_), children)
+//         // // pull out exactly that list of children
+//         // list[Tree] children = getListFromSeq(v);
+//         // println("DUDDUEDUDUEUDEUDEUDUEAUDEUASDUASDUASDUASDUAS");
+//         // println(toString(children));
+//         // // by convention our grammar for Vertex is:
+//         // //   "{" WS xLit WS "," WS yLit WS "," WS zLit WS "}"
+//         // // so xLit is at index 2, yLit at index 6, zLit at index 10
+//         // int x = getInt(children[2]);
+//         // int y = getInt(children[6]);
+//         // int z = getInt(children[10]);
+
+//         // result += vertex(x, y, z);
+//     }
+
+//     return result;
+// }
+
+
+private list[Hold] getHolds(Tree t) {
+  list[Hold] hs = [];
+  // find every Hold node anywhere under t
+  visit (t) {
+    case h: appl(prod(label("hold", _), _, _), _) :
+      hs += getHold(h);
+  }
+  return hs;
+}
+
+// private list[Vertex] getVertices(Tree t) =
+//     [vertex(getInt(x), getInt(y), getInt(z)) 
+//         | appl(_, [x, y, z]) <- getListFromSeq(t)
+//     ];
 
 private list[Hold] getHoldsOpt(Tree t) {
     switch (t) {
@@ -253,7 +508,21 @@ private Hold getHold(Tree t) {
     }
 }
 
-private list[BoulderingRoute] getRoutes(Tree t) = [getRoute(r) | r <- getListFromSeq(t)];
+// private list[BoulderingRoute] getRoutes(Tree t) = [getRoute(r) | r <- getListFromSeq(t)];
+
+// children is the list[Tree] under the Routes node
+private list[BoulderingRoute] getRoutes(list[Tree] children) {
+    list[BoulderingRoute] result = [];
+    for (Tree c <- children) {
+        visit(c) {
+        case r: appl(prod(label("bouldering_route", _), _, _), _):
+            result += getRoute(r);
+        default: ;
+        }
+    }
+    return result;
+}
+
 
 private BoulderingRoute getRoute(Tree t) {
     switch (t) {
