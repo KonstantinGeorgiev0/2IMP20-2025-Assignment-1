@@ -20,34 +20,97 @@ import util::Maybe;
  * Map regular CST arguments (e.g., *, +, ?) to lists
  * Map lexical nodes to Rascal primitive types (bool, int, str)
  */
-public BoulderingWall cst2ast(Tree t) {
-    // This function converts a concrete syntax tree (CST) to an abstract syntax tree (AST).
-    // The CST represents the parsed structure of the code, while the AST represents the logical structure.
-    switch (t) {
-        // Match the structure of a bouldering wall in the CST
-        case appl(prod(label("bouldering_wall", _), _, _), 
-            [_, id, _, _, volBlock, _, routeBlock, _]):
-            return boulderingWall(
-                getString(id), 
-                getVolumes(volBlock), 
-                getRoutes(routeBlock)
-                );
+public BoulderingWall cst2ast(Tree cst) {
+    // Temporary holders
+    str name = "";
+    list[Volume] volumes = [];
+    list[BoulderingRoute] routes = [];
+
+    switch (cst) {
+        // Match the root BoulderingWall node (the concrete syntax, see Syntax.rsc)
+        case appl(
+            prod(sort("BoulderingWall"), _, _), 
+            children
+            ): {
+                // Iterate over each direct child of the wall
+                for (Tree child <- children) {
+                    switch (child) {
+                        // Identifier subtree carries the wall name
+                        case appl(
+                                prod(label("identifier", lex("Identifier")), _, _), _):
+                                {
+                                    name = getString(child);  
+                                    println("identifier success");   
+                                }
+
+                        // volumes subtree—collect all Volume nodes
+                        case appl(
+                                // prod(sort("Volumes"), _, _), _):
+                                prod(sort("Volumes"), _, _), 
+                                [
+                                    appl(prod(lit("volumes"), _, _), _),
+                                    _ws1,
+                                    appl(prod(lit("["), _, _), _),
+                                    _ws2,
+                                    seqNode,
+                                    _ws3,
+                                    appl(prod(lit("]"), _, _), _)
+                                ]
+                                ):
+                                {
+                                    println("volummm");
+                                    // volumes = getVolumes(child);
+                                    volumes = [ getVolume(v) | v <- getListFromSeq(seqNode) ];
+                                    println("volumes success");
+                                }
+                        
+                        // routes subtree—collect all BoulderingRoute nodes
+                        case appl(
+                                prod(sort("Routes"), _, _), _):
+                                {
+                                    routes = [ getRoute(r) 
+                                            | r <- getListFromSeq(child) 
+                                            ];
+                                    println("routes success");
+                                }
+
+                        // all else (whitespace, braces, commas) is ignored
+                        default: ;
+                    }
+                }
+
+                // Build the AST node once we have name, volumes, and routes
+                return boulderingWall(name, volumes, routes);
+            }
         default:
-            throw "Invalid BoulderingWall structure:" + toString(t);
+        throw "Invalid BoulderingWall structure: " + toString(cst);
     }
+}
+
+private Tree stripLayout(Tree t) {
+  switch (t) {
+    // If this is the Rascal-wrapper around your start symbol,
+    case appl(prod(label("start", sort(_)), _, _), [ inner ]):
+      return stripLayout(inner);
+    // If this is a pure layout node (whitespace, comments, etc.),
+    case appl(prod(label("layouts", _), _, _), _):
+      throw "unreachable"; // or return something safe
+    default:
+      return t;
+  }
 }
 
 // strip the surrounding quotes helper function
 private str stripQuotes(str s) {
-  if (size(s) >= 2 
-      && s[0] == "\""          // compare to the string containing a single quote character
-      && s[size(s)-1] == "\"") 
-  {
-    return substring(s, 1, size(s)-1);
-  }
-  else {
-    return s;
-  }
+    if (size(s) >= 2 
+        && s[0] == "\""          // compare to the string containing a single quote character
+        && s[size(s)-1] == "\"") 
+    {
+        return substring(s, 1, size(s)-1);
+    }
+    else {
+        return s;
+    }
 }
 
 // pull out all immediate children of an appl node
@@ -72,30 +135,43 @@ private bool isAppl(Tree t) {
 }
 
 public str getString(Tree t) {
-  switch (t) {
-    // Identifier is a lexical non terminal
-    case appl(prod(label("Identifier", _), _, _), [ child ]):
-      return stripQuotes(toString(child));
-    default:
-      throw "Expected Identifier, got: " + toString(t);
-  }
+    switch (t) {
+        // Identifier is a lexical non terminal
+        case appl(
+            prod(label("identifier", lex("Identifier")), _, _), 
+            [ _openQuote, content, _closeQuote ]
+            ):
+            return stripQuotes(toString(content));
+        // fawback for any raw identifier
+        case appl(prod(lex("Identifier"), _, _), [ child ]):
+            return stripQuotes(toString(child));
+        default:
+            throw "Expected Identifier, got: " + toString(t);
+    }
 }
 
 private int getInt(Tree t) {
-  switch (t) {
-    // Integer is a lexical non terminal
-    case appl(prod(label("Integer", _), _, _), [ child ]):
-      return toInt(stripQuotes(toString(child)));
-    default:
-      throw "Expected Integer, got: " + toString(t);
-  }
+    switch (t) {
+        // Integer is a lexical non terminal
+        // case appl(prod(label("Integer", _), _, _), [ child ]):
+        case appl(prod(lex("Integer"), _, _), [ child ]):
+            return toInt(stripQuotes(toString(child)));
+        default:
+            throw "Expected Integer, got: " + toString(t);
+    }
 }
 
-
 private list[Volume] getVolumes(Tree t) = 
-    [getVolume(v) | v <- getListFromSeq(t)];
+    [ getVolume(v)
+     | v <- getListFromSeq(t) 
+    ];
+    //  | seq <- getListFromSeq(t),
+    //     v <- getListFromSeq(seq) 
+    // ];
 
 private Volume getVolume(Tree t) {
+    println("gugugu");
+    println(t);
     switch (t) {
         case appl(prod(label("circle", _), _, _), [_, _, pos, _, depth, _, radius, _]):
         return circle(getPosition(pos), getInt(depth), getInt(radius));
@@ -154,7 +230,8 @@ private Hold getHold(Tree t) {
 
             for (Tree prop <- getListFromSeq(propList)) {
                 switch (prop) {
-                    case appl(prod(label("pos", _), _, _), [_, _, posT]): 
+                    // case appl(prod(label("pos", _), _, _), [_, _, posT]):
+                    case appl(prod(label("pos", _), _, _), [_, posT]): 
                         p = getPosition(posT);
                     case appl(prod(label("shape", _), _, _), [_, _, shapeT]): 
                         shape = getString(shapeT);
@@ -190,7 +267,8 @@ private BoulderingRoute getRoute(Tree t) {
                 switch (prop) {
                     case appl(prod(label("grade", _), _, _), [_, _, g]): 
                         grade = getString(g);
-                    case appl(prod(label("grid_base_point", _), _, _), [_, _, p]): 
+                    // case appl(prod(label("grid_base_point", _), _, _), [_, _, p]): 
+                    case appl(prod(label("grid_base_point", _), _, _), [_, p]):  
                         gbp = getPosition(p);
                     case appl(prod(label("holds", _), _, _), [_, _, idList]): 
                         holdIds = [getString(h) | h <- getListFromSeq(idList)];
