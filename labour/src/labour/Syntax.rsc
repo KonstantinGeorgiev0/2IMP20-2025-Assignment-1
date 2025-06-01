@@ -5,6 +5,9 @@ layout Whitespace = [\t\n\r\ ]*;
 
 /*
  * Define a concrete syntax for LaBouR. The language's specification is available in the PDF (Section 2)
+ * Root non terminal BoulderingWall groups volumes and routes so we can cross check them later. 
+ * Each volume kind gets its own rule, shared fields like pos, depth, etc. are factored out for
+ * reuse. Commas and optionals are spelled out explicitly to avoid ambiguity.
  */
 
 /*
